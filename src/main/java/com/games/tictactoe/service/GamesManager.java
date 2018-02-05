@@ -12,9 +12,11 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.games.tictactoe.model.IncorrectStepException;
 import com.games.tictactoe.model.Game;
 import com.games.tictactoe.model.NoSuchGameException;
 import com.games.tictactoe.model.Player;
+import com.games.tictactoe.model.StepResult;
 
 /**
  * Games Manager
@@ -102,6 +104,33 @@ public class GamesManager {
 
 		return accessToken;
 	}
+	
+	/**
+	 * @param row of step
+	 * @param col of step
+	 * @param accessToken of player wanted to do step
+	 * @return if step is successful
+	 */
+	public StepResult doStep(int row, int col, String accessToken) {
+		
+		Player player = players.get(accessToken);
+		if (player == null) {
+			return null; // maybe throw exception
+		}
+		
+		Game game = games.get(player.getGameToken());
+		if (game == null) {
+			return null; // maybe throw exception
+		}
+
+		try {
+			return game.doStep(row, col, player);
+		} catch (IncorrectStepException e) {
+		}
+		
+		return null;
+	}
+	
 	
 	private String generateNewAccessToken() {
 		return PLAYER_ACCESS_TOKEN_PATTERN + players.size();
