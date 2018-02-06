@@ -5,9 +5,14 @@ package com.games.tictactoe.service;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +31,8 @@ public class GamesManager {
 	
 	private static final String GAME_TOKEN_PATTERN = "gameToken";
 	private static final String PLAYER_ACCESS_TOKEN_PATTERN = "accessToken";
+	private static final int GAME_ACTIVITY_MILLISECONDS = 5 * 60 * 1000; // 5 minutes
+	private static final int GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS = 100;
 	
 	/**
 	 * Games Factory
@@ -36,12 +43,25 @@ public class GamesManager {
 	/**
 	 * Players storage, key - accessToken, value - player
 	 */
-	private Map<String, Player> players = new HashMap<>();
+	private Map<String, Player> players = Collections.synchronizedMap(new HashMap<>());
 
 	/**
 	 * Games storage, key - gameToken, value - game
 	 */
-	private Map<String, Game> games = new HashMap<>();
+	private Map<String, Game> games = Collections.synchronizedMap(new HashMap<>());
+	
+	private boolean needCheckGamesLife = true;
+	private Thread checkGamesLifeThread;
+	
+	@PostConstruct
+	public void init() {
+		startCheckGamesActivity();
+	}
+	
+	@PreDestroy
+	public void cleanup() {
+		stopCheckGamesActivity();
+	}
 
 	/**
 	 * Clears all games and players
@@ -131,6 +151,53 @@ public class GamesManager {
 		return null;
 	}
 	
+	
+	private void startCheckGamesActivity() {
+		checkGamesLifeThread = new Thread() {
+			@Override
+			public void run() {
+				while (needCheckGamesLife) {
+					
+					// TODO discuss about performance if necessary
+					synchronized (games) {
+						for (Iterator<Game> iterator = games.values().iterator(); iterator.hasNext();) {
+							Game game = iterator.next();
+							if (game.getActivityTime() >= GAME_ACTIVITY_MILLISECONDS) {
+								players.remove(game.getOwner().getAccessToken());
+								players.remove(game.getOpponent().getAccessToken());
+								game.getSpectators().forEach(spec -> {
+									players.remove(spec.getAccessToken());
+								});
+								
+								iterator.remove();
+							}
+						}
+					}
+					
+					try {
+						Thread.sleep(GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+
+		checkGamesLifeThread.start();
+	}
+
+	private void stopCheckGamesActivity() {
+		needCheckGamesLife = false;
+		try {
+			checkGamesLifeThread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		System.out.println(games.size());
+		System.out.println(players.size());
+		System.out.println( "cleanup done" );
+	}
 	
 	private String generateNewAccessToken() {
 		return PLAYER_ACCESS_TOKEN_PATTERN + players.size();

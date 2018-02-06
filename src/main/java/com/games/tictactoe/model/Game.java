@@ -1,5 +1,8 @@
 package com.games.tictactoe.model;
 
+import java.util.Collection;
+
+
 public interface Game {
 	
 	/**
@@ -23,6 +26,10 @@ public interface Game {
 	 */
 	void addSpectator(Player spectator);
 	/**
+	 * @return spectators of game
+	 */
+	Collection<Player> getSpectators();
+	/**
 	 * @return two dimensional game field
 	 */
 	char[][] getField();
@@ -34,4 +41,23 @@ public interface Game {
 	 * @throws IncorrectStepException
 	 */
 	StepResult doStep(int row, int col, Player player) throws IncorrectStepException;
+	/**
+	 * @return game state
+	 */
+	State getState();
+	/**
+	 * @return duration of game
+	 */
+	long getDuration();
+	
+	/**
+	 * @return activity time
+	 */
+	long getActivityTime();
+
+	public enum State {
+		Ready,
+		Playing,
+		Done
+	}
 }
