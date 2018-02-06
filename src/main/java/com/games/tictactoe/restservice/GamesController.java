@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.games.tictactoe.model.Game;
+import com.games.tictactoe.model.NoGameException;
 import com.games.tictactoe.service.GamesManager;
 
 @RestController
@@ -24,6 +25,14 @@ public class GamesController {
 			@RequestParam(value = "size", required = true) int size) {
 		
 		// TODO return response message instead of game
-		return gamesManager.createNewGame(userName, size);
+		Game game = null;
+		try {
+			game = gamesManager.createNewGame(userName, size);
+		} catch (NoGameException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return game;
 	}
 }

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 
 import com.games.tictactoe.model.IncorrectStepException;
 import com.games.tictactoe.model.Game;
-import com.games.tictactoe.model.NoSuchGameException;
+import com.games.tictactoe.model.NoGameException;
 import com.games.tictactoe.model.Player;
 import com.games.tictactoe.model.StepResult;
 
@@ -29,6 +29,9 @@ import com.games.tictactoe.model.StepResult;
 @Service
 public class GamesManager {
 	
+	private static final int MIN_FIELD_SIZE = 3;
+	private static final String TOO_SMALL_FIELD_MESSAGE = "Minimum field size is " + MIN_FIELD_SIZE;
+	private static final String NO_GAME_WITH_TOKEN_MESSAGE = "No game with token ";
 	private static final String GAME_TOKEN_PATTERN = "gameToken";
 	private static final String PLAYER_ACCESS_TOKEN_PATTERN = "accessToken";
 	private static final int GAME_ACTIVITY_MILLISECONDS = 5 * 60 * 1000; // 5 minutes
@@ -75,8 +78,13 @@ public class GamesManager {
 	 * @param userName	game creator and owner name
 	 * @param size		field size
 	 * @return			new created game object
+	 * @throws NoGameException 
 	 */
-	public Game createNewGame(String userName, int size) {
+	public Game createNewGame(String userName, int size) throws NoGameException {
+		
+		if (size < MIN_FIELD_SIZE) {
+			throw new NoGameException(TOO_SMALL_FIELD_MESSAGE);
+		}
 
 		String accessToken = generateNewAccessToken();
 		Player newPlayer = new Player(userName, accessToken);
@@ -102,13 +110,13 @@ public class GamesManager {
 	 * @param gameToken	game token to join
 	 * @param userName	user name
 	 * @return			accessToken of joined user
-	 * @throws NoSuchGameException 
+	 * @throws NoGameException 
 	 */
-	public String joinGame(String gameToken, String userName) throws NoSuchGameException {
+	public String joinGame(String gameToken, String userName) throws NoGameException {
 		
 		Game game = games.get(gameToken);
 		if (game == null) {
-			throw new NoSuchGameException("No game with token " + gameToken);	
+			throw new NoGameException(NO_GAME_WITH_TOKEN_MESSAGE + gameToken);	
 		}
 		
 		String accessToken = generateNewAccessToken();

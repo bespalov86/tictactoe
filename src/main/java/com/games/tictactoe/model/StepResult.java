@@ -5,7 +5,7 @@ public class StepResult {
 	private final boolean isSuccessful;
 	private final String description;
 	
-	public StepResult(boolean isSuccessful, String description) {
+	private StepResult(boolean isSuccessful, String description) {
 		this.isSuccessful = isSuccessful;
 		this.description = description;
 	}

@@ -15,7 +15,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
 import com.games.tictactoe.model.Game;
-import com.games.tictactoe.model.NoSuchGameException;
+import com.games.tictactoe.model.NoGameException;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes=TestConfiguration.class, loader=AnnotationConfigContextLoader.class)
@@ -30,7 +30,7 @@ public class GamesManagerTest {
 	}
 
 	@Test
-	public void TestAddGames() {
+	public void TestAddGames() throws NoGameException {
 		
 		Game game1 = manager.createNewGame("userName1", 3);
 		Game game2 = manager.createNewGame("userName2", 5);
@@ -44,7 +44,7 @@ public class GamesManagerTest {
 	}
 
 	@Test
-	public void TestJoinGame() throws NoSuchGameException {
+	public void TestJoinGame() throws NoGameException {
 		
 		Game game = manager.createNewGame("userName", 3);
 		String gameToken = game.getToken();
@@ -59,8 +59,8 @@ public class GamesManagerTest {
 		assertNotEquals(game.getOwner().getAccessToken(), opponentAccessToken);
 	}
 
-	@Test(expected = NoSuchGameException.class)
-	public void TestJoinNonExistingGame() throws NoSuchGameException {
+	@Test(expected = NoGameException.class)
+	public void TestJoinNonExistingGame() throws NoGameException {
 
 		Game game = manager.createNewGame("userName", 3);
 		String gameToken = game.getToken();

@@ -1,6 +1,7 @@
 package com.games.tictactoe.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 public class GameImpl implements Game {
@@ -20,6 +21,7 @@ public class GameImpl implements Game {
 	private Player opponent;
 	private Collection<Player> spectators = new ArrayList<>();
 	private Player currentPlayer;
+	private Player winner;
 	private char[][] field;
 	private State state;
 	private long startTimestamp = 0;
@@ -77,6 +79,18 @@ public class GameImpl implements Game {
 	}
 
 	@Override
+	public long getDuration() {
+		
+		return System.currentTimeMillis() - startTimestamp;
+	}
+
+	@Override
+	public long getActivityTime() {
+		
+		return System.currentTimeMillis() - lastStepTimestamp;
+	}
+
+	@Override
 	public StepResult doStep(int row, int col, Player player) throws IncorrectStepException {
 		
 		// TODO need discuss when start game
@@ -116,19 +130,82 @@ public class GameImpl implements Game {
 			} else {
 				result = StepResult.createUnsuccessful(NOT_YOUR_TURN_MESSAGE);
 			}
+		} else {
+			result = StepResult.createUnsuccessful("Looks like you are spectator...");			
 		}
-		
-		result = StepResult.createUnsuccessful("Looks like you are spectator...");
+
+		if (result.isSuccessful()) {
+			checkStepForWin(row, col, player);
+		}
 		
 		return result;
 	}
 
+	/**
+	 * yes, manual check horizontal, vertical and diagonals
+	 * maybe extract data to list and check list if necessary in future
+	 */
+	private void checkStepForWin(int stepRow, int stepCol, Player player) {
+		// natural int
+		char stepSymbol = field[stepRow-1][stepCol-1];
+
+		// check horizontal
+		boolean win = true;
+		for (int col = 0; col < size; col++) {
+			if (field[stepRow-1][col] != stepSymbol) {
+				win = false;
+				break;
+			}
+		}
+		if (win) {
+			stop(player);
+			return;
+		}
+		
+		//check vertical
+		win = true;		
+		for (int row = 0; row < size; row++) {
+			if (field[row][stepCol-1] != stepSymbol) {
+				win = false;
+				break;
+			}
+		}
+		if (win) {
+			stop(player);
+			return;
+		}
+		
+		//check diagonal 1
+		win = true;		
+		for (int i = 0; i < size; i++) {
+			if (field[i][i] != stepSymbol) {
+				win = false;
+				break;
+			}
+		}
+		if (win) {
+			stop(player);
+			return;
+		}
+		
+		//check diagonal 2
+		win = true;		
+		for (int i = 0; i < size; i++) {
+			if (field[i][size - i - 1] != stepSymbol) {
+				win = false;
+				break;
+			}
+		}
+		if (win) {
+			stop(player);
+			return;
+		}
+	}
+
 	private void initField() {
 		field = new char[size][size];
-		for (int row = 0; row < size;  row++) {
-			for (int col = 0; col < size;  col++) {
-				field[row][col] = FREE_FIELD_SYMBOL;
-			}
+		for (char[] row : field) {
+			Arrays.fill(row, FREE_FIELD_SYMBOL);
 		}
 	}
 
@@ -136,17 +213,14 @@ public class GameImpl implements Game {
 		startTimestamp = System.currentTimeMillis();
 		state = State.Playing;
 	}
-
-	@Override
-	public long getDuration() {
+	
+	private void stop(Player winner) {
 		
-		return System.currentTimeMillis() - startTimestamp;
+		this.winner = winner;
+		state = State.Done;
+		
+		System.out.println("winner " + winner.getName() );
 	}
 
-	@Override
-	public long getActivityTime() {
-		
-		return System.currentTimeMillis() - lastStepTimestamp;
-	}
 
 }
