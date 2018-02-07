@@ -159,6 +159,35 @@ public class GamesManager {
 		return null;
 	}
 	
+	public GameState getGameState(String accessToken) {
+
+		Player player = players.get(accessToken);
+		if (player == null) {
+			return null; // maybe throw exception
+		}
+		
+		Game game = games.get(player.getGameToken());
+		if (game == null) {
+			return null; // maybe throw exception
+		}
+		
+		GameState state = new GameState();
+
+		state.setGame(game);
+		state.setYouTurn(player.equals(game.getCurrentPlayer()));
+		
+		return state;
+	}
+	
+	public Game getGame(String accessToken) {
+		
+		Player player = players.get(accessToken);
+		if (player == null) {
+			return null; // maybe throw exception
+		}
+		
+		return games.get(player.getGameToken());
+	}
 	
 	private void startCheckGamesActivity() {
 		checkGamesLifeThread = new Thread() {

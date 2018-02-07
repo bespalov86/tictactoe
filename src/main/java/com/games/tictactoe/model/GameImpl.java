@@ -14,6 +14,7 @@ public class GameImpl implements Game {
 	private static final String OK_STEP_MESSAGE = "Ok";
 	private static final String FIELD_BUSY_MESSAGE = "Field is busy";
 	private static final String NOT_YOUR_TURN_MESSAGE = "Now not your turn!";
+	private static final String GAME_FINISHED = "Game already finished";
 
 	private final String token;
 	private final int size;
@@ -26,17 +27,24 @@ public class GameImpl implements Game {
 	private State state;
 	private long startTimestamp = 0;
 	private long lastStepTimestamp = 0;
- 
- 	public GameImpl(String token, Player owner, int size) {
+	private GameResult result = new GameResult("");
+
+	public GameImpl(String token, Player owner, int size) {
 		this.token = token;
 		this.owner = owner;
 		this.size = size;
 		
 		state = State.Ready;
-		lastStepTimestamp = System.currentTimeMillis();
+		startTimestamp = System.currentTimeMillis();
+		lastStepTimestamp = startTimestamp;
 
 		initField();
 		currentPlayer = owner;
+	}
+
+	@Override
+	public int getSize() {
+		return size;
 	}
 
 	@Override
@@ -68,7 +76,12 @@ public class GameImpl implements Game {
 	public Collection<Player> getSpectators() {
 		return spectators;
 	}
-	
+
+	@Override
+	public Player getCurrentPlayer() {
+		return currentPlayer;
+	}
+
 	@Override
 	public char[][] getField() {
 		return field;
@@ -94,17 +107,20 @@ public class GameImpl implements Game {
 	@Override
 	public StepResult doStep(int row, int col, Player player) throws IncorrectStepException {
 		
+		if (state != State.Ready && state != State.Playing) {
+			throw new IncorrectStepException(GAME_FINISHED);
+		}
+		
+		if (row < 1 || row > size || col < 1 || col > size) {
+			throw new IncorrectStepException(NO_SUCH_FIELD_MESSAGE);
+		}
+
 		// TODO need discuss when start game
 		if (state == State.Ready) {
 			start();
 		}
 		
 		lastStepTimestamp = System.currentTimeMillis();
-		
-		if (row < 1 || row > size || col < 1 || col > size) {
-			throw new IncorrectStepException(NO_SUCH_FIELD_MESSAGE);
-		}
-		
 		StepResult result = null;
 
 		if (player.equals(owner)) { // owner wants to do step
@@ -137,11 +153,20 @@ public class GameImpl implements Game {
 
 		if (result.isSuccessful()) {
 			checkStepForWin(row, col, player);
+
+			if (state == State.Playing) {
+				checkForDraw();				
+			}
 		}
-		
+
 		return result;
 	}
 
+	@Override
+	public GameResult getResult() {
+		return result;
+	}
+	
 	/**
 	 * yes, manual check horizontal, vertical and diagonals
 	 * maybe extract data to list and check list if necessary in future
@@ -159,7 +184,7 @@ public class GameImpl implements Game {
 			}
 		}
 		if (win) {
-			stop(player);
+			stopWin(player);
 			return;
 		}
 		
@@ -172,7 +197,7 @@ public class GameImpl implements Game {
 			}
 		}
 		if (win) {
-			stop(player);
+			stopWin(player);
 			return;
 		}
 		
@@ -185,7 +210,7 @@ public class GameImpl implements Game {
 			}
 		}
 		if (win) {
-			stop(player);
+			stopWin(player);
 			return;
 		}
 		
@@ -198,11 +223,36 @@ public class GameImpl implements Game {
 			}
 		}
 		if (win) {
-			stop(player);
+			stopWin(player);
 			return;
 		}
 	}
 
+	
+	/**
+	 * we will search FREE_FIELD_SYMBOL
+	 * in other algorithm we can e.g. count steps
+	 */
+	private void checkForDraw() {
+		
+		boolean freeFieldExist = false;
+		
+		for (int row = 0; row < size && !freeFieldExist; row++) {
+			for (char c : field[row]) {
+				if (c == FREE_FIELD_SYMBOL) {
+					freeFieldExist = true;
+					break;
+				}
+			}
+			
+		}
+		
+		if (!freeFieldExist) {
+			state = State.Done;
+			result = new GameResult("draw");
+		}
+	}
+	
 	private void initField() {
 		field = new char[size][size];
 		for (char[] row : field) {
@@ -211,17 +261,24 @@ public class GameImpl implements Game {
 	}
 
 	private void start() {
-		startTimestamp = System.currentTimeMillis();
 		state = State.Playing;
 	}
 	
-	private void stop(Player winner) {
+	private void stopWin(Player winner) {
 		
 		this.winner = winner;
 		state = State.Done;
 		
-		System.out.println("winner " + winner.getName() );
+		if (winner.equals(owner)) {
+			result = new GameResult("owner");			
+		} else if (winner.equals(opponent)) {
+			result = new GameResult("opponent");
+		}
 	}
 
 
+	@Override
+	public Player getWinner() {
+		return winner;
+	}
 }
