@@ -172,7 +172,9 @@ public class GamesManager {
 							Game game = iterator.next();
 							if (game.getActivityTime() >= GAME_ACTIVITY_MILLISECONDS) {
 								players.remove(game.getOwner().getAccessToken());
-								players.remove(game.getOpponent().getAccessToken());
+								if (game.getOpponent() != null) {
+									players.remove(game.getOpponent().getAccessToken());										
+								}
 								game.getSpectators().forEach(spec -> {
 									players.remove(spec.getAccessToken());
 								});

@@ -33,6 +33,7 @@ public class GameImpl implements Game {
 		this.size = size;
 		
 		state = State.Ready;
+		lastStepTimestamp = System.currentTimeMillis();
 
 		initField();
 		currentPlayer = owner;
