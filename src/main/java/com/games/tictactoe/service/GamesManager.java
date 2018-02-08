@@ -1,8 +1,4 @@
-/**
- * 
- */
 package com.games.tictactoe.service;
-
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,13 +11,16 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.games.tictactoe.model.IncorrectStepException;
 import com.games.tictactoe.model.Game;
+import com.games.tictactoe.model.Game.State;
 import com.games.tictactoe.model.NoGameException;
 import com.games.tictactoe.model.Player;
 import com.games.tictactoe.model.StepResult;
+import com.games.tictactoe.service.storage.GamesStorage;
 
 /**
  * Games Manager
@@ -42,6 +41,10 @@ public class GamesManager {
 	 */
 	@Autowired
 	private GamesFactory gamesFactory;
+	
+	@Autowired
+	@Qualifier("dbStorage")
+	private GamesStorage gamesStorage;
 	
 	/**
 	 * Players storage, key - accessToken, value - player
@@ -96,6 +99,8 @@ public class GamesManager {
 		
 		newPlayer.setGameToken(gameToken);
 		
+		gamesStorage.createPlayer(newPlayer);
+
 		return newGame;
 	}
 	
@@ -129,6 +134,8 @@ public class GamesManager {
 		} else { // add spectator
 			game.addSpectator(newPlayer);
 		}
+		
+		gamesStorage.createPlayer(newPlayer);
 
 		return accessToken;
 	}
@@ -151,12 +158,17 @@ public class GamesManager {
 			return null; // maybe throw exception
 		}
 
+		StepResult result = null;
 		try {
-			return game.doStep(row, col, player);
+			result = game.doStep(row, col, player);
 		} catch (IncorrectStepException e) {
 		}
-		
-		return null;
+
+		if (game.getState() == State.Done) {
+			gamesStorage.saveGameResult(game);
+		}
+
+		return result;
 	}
 	
 	public GameState getGameState(String accessToken) {
@@ -233,17 +245,17 @@ public class GamesManager {
 			e.printStackTrace();
 		}
 		
-		System.out.println(games.size());
-		System.out.println(players.size());
-		System.out.println( "cleanup done" );
+//		System.out.println(games.size());
+//		System.out.println(players.size());
+//		System.out.println( "cleanup done" );
 	}
 	
 	private String generateNewAccessToken() {
-		return PLAYER_ACCESS_TOKEN_PATTERN + players.size();
+		return PLAYER_ACCESS_TOKEN_PATTERN + System.currentTimeMillis() + players.size();
 	}
-	
+
 	private String generateNewGameToken() {
-		return GAME_TOKEN_PATTERN + games.size();
+		return GAME_TOKEN_PATTERN + System.currentTimeMillis() + games.size();
 	}
 
 }

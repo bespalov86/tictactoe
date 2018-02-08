@@ -1,14 +1,11 @@
 package com.games.tictactoe;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 
 import com.games.tictactoe.model.Game;
 import com.games.tictactoe.model.NoGameException;
@@ -23,6 +20,30 @@ public class App
     {
     	ApplicationContext context = SpringApplication.run(App.class, args);
     	
+    	//runExampleWin(context);
+    	
+    	//runExampleService(context);
+    }
+    
+    private static void runExampleService(ApplicationContext context) {
+    	GamesManager manager = context.getBean(GamesManager.class);
+    	
+        Game game = null;
+        try {
+        	game = manager.createNewGame("user1", 3);
+		} catch (NoGameException e1) {
+		}
+//*
+        // games/new		
+        String gameToken = game.getToken();
+        String ownerToken = game.getOwner().getAccessToken();
+    	System.out.println( "gameToken: " + gameToken );
+    	System.out.println( "accessToken: " + ownerToken );
+//*/    	
+        
+    }
+    
+    private static void runExampleWin(ApplicationContext context) {
     	GamesManager manager = context.getBean(GamesManager.class);
         Game game = null;
         try {
@@ -47,22 +68,11 @@ public class App
         manager.doStep(2, 1, opponentToken);
         manager.doStep(3, 1, ownerToken);
         
-        System.out.println( "after step1:" );
+        System.out.println( "after:" );
         printGameStatus(game);
-        
-//        StepResult step2 = manager.doStep(3, 2, opponentToken);
-//        System.out.println( "after step2:" );
-//        printGameStatus(game);
-//        
-//        System.out.println( manager.getGamesList().size() );
-        
     }
     
     private static void printGameStatus(Game game) {
-//    	System.out.println( "gameToken: " + g.getToken() );
-//    	System.out.println( "owner: " + g.getOwner() );
-//    	System.out.println( "opponent: " + g.getOpponent() );
-//    	System.out.println( "field: " + Arrays.deepToString(game.getField()) );
     	for (int i = 0; i < game.getField().length; i++) {
     		System.out.println( Arrays.toString(game.getField()[i]) );
 		}

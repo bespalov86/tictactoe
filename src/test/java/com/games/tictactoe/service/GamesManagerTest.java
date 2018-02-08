@@ -10,16 +10,23 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
 import com.games.tictactoe.model.Game;
 import com.games.tictactoe.model.NoGameException;
+import com.games.tictactoe.service.storage.GamesStorage;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+@RunWith(SpringRunner.class)
 @ContextConfiguration(classes=TestConfiguration.class, loader=AnnotationConfigContextLoader.class)
+@SpringBootTest
 public class GamesManagerTest {
+
+	@MockBean(name="dbStorage")
+	private GamesStorage gamesStorage;
 	
 	@Autowired
 	private GamesManager manager;
