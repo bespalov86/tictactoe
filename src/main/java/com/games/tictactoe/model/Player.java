@@ -1,59 +1,43 @@
 package com.games.tictactoe.model;
 
-public class Player {
-	
-	private final String name;
-	private final String accessToken;
-	private String gameToken;
-	
-	public Player(String name, String accessToken) {
-		this.name = name;
-		this.accessToken = accessToken;
-	}
+public class Player extends GamePerson {
+  
+  private final char stepChar;
+  
+  public Player(String token, String name, char stepChar, String gameToken) {
+    super(token, name, gameToken);
+    this.stepChar = stepChar; 
+  }
 
-	public String getGameToken() {
-		return gameToken;
-	}
+  public char getStepChar() {
+    return stepChar;
+  }
 
-	public void setGameToken(String gameToken) {
-		this.gameToken = gameToken;
-	}
+  @Override
+  public String toString() {
+    return "player " + super.toString();
+  }
+  
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + stepChar;
+    return result;
+  }
 
-	public String getName() {
-		return name;
-	}
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Player other = (Player) obj;
+    if (stepChar != other.stepChar)
+      return false;
+    return true;
+  }
 
-	public String getAccessToken() {
-		return accessToken;
-	}
-
-	@Override
-	public String toString() {
-		return name;
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((accessToken == null) ? 0 : accessToken.hashCode());
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Player other = (Player) obj;
-		if (accessToken == null) {
-			if (other.accessToken != null)
-				return false;
-		} else if (!accessToken.equals(other.accessToken))
-			return false;
-		return true;
-	}
 }

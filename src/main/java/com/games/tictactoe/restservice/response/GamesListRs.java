@@ -8,65 +8,63 @@ import com.games.tictactoe.model.Game;
 
 public class GamesListRs extends BaseResponse {
 
-	private List<GameRs> games;
-	
-	public List<GameRs> getGames() {
-		return games;
-	}
+  private List<GameRs> games;
 
-	// TODO use something library like Dozer
-	public void initGames(List<Game> games) {
-		
-		if (games != null) {
-			this.games = new ArrayList<>();
-			
-			games.stream().filter(Objects::nonNull)
-			.forEach(game -> {
-				GameRs gameRs = new GameRs();
+  public List<GameRs> getGames() {
+    return games;
+  }
 
-				gameRs.gameToken	= game.getToken();
-				gameRs.owner		= game.getOwner().getName();
-				gameRs.opponent		= game.getOpponent() != null ? game.getOpponent().getName() : "";
-				gameRs.size			= game.getSize();
-				gameRs.gameDuration	= game.getDuration();
-				gameRs.gameResult	= game.getResult().getDescription();
-				gameRs.state		= game.getState().toString().toLowerCase();
+  // TODO use something library like Dozer
+  public void initGames(List<Game> games) {
 
-				this.games.add(gameRs);
-			});
-		}
-	}
+    if (games != null) {
+      this.games = new ArrayList<>();
 
-	public class GameRs {
-		String gameToken;
-		String owner;
-		String opponent;
-		int size;
-		long gameDuration;
-		String gameResult;
-		String state;
+      games.stream().filter(Objects::nonNull).forEach(game -> {
+        GameRs gameRs = new GameRs();
 
-		// getters need for JSON response
-		public String getGameToken() {
-			return gameToken;
-		}
-		public String getOwner() {
-			return owner;
-		}
-		public String getOpponent() {
-			return opponent;
-		}
-		public int getSize() {
-			return size;
-		}
-		public long getGameDuration() {
-			return gameDuration;
-		}
-		public String getGameResult() {
-			return gameResult;
-		}
-		public String getState() {
-			return state;
-		}
-	}
+        gameRs.gameToken = game.getToken();
+        gameRs.owner = game.getOwner().getName();
+        gameRs.opponent = game.getOpponent() != null ? game.getOpponent().getName() : "";
+        gameRs.size = game.getSize();
+        gameRs.gameDuration = game.getDuration();
+        gameRs.state = game.getState().toString().toLowerCase();
+        this.games.add(gameRs);
+      });
+    }
+  }
+
+  public class GameRs {
+    String gameToken;
+    String owner;
+    String opponent;
+    int size;
+    long gameDuration;
+    String state;
+
+    // getters need for JSON response
+    public String getGameToken() {
+      return gameToken;
+    }
+
+    public String getOwner() {
+      return owner;
+    }
+
+    public String getOpponent() {
+      return opponent;
+    }
+
+    public int getSize() {
+      return size;
+    }
+
+    public long getGameDuration() {
+      return gameDuration;
+    }
+
+    public String getState() {
+      return state;
+    }
+  }
 }

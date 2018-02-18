@@ -10,9 +10,4 @@ public class TestConfiguration {
 	public GamesManager gamesManager() {
 		return new GamesManager();
 	}
-	
-	@Bean
-	public GamesFactory gamesFactory() {
-		return new GamesFactory();
-	}
 }

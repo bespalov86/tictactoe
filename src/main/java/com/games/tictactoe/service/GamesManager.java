@@ -1,11 +1,10 @@
 package com.games.tictactoe.service;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -14,12 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import com.games.tictactoe.model.IncorrectStepException;
 import com.games.tictactoe.model.Game;
 import com.games.tictactoe.model.Game.State;
+import com.games.tictactoe.model.IncorrectStepException;
 import com.games.tictactoe.model.NoGameException;
-import com.games.tictactoe.model.Player;
-import com.games.tictactoe.model.StepResult;
 import com.games.tictactoe.service.storage.GamesStorage;
 
 /**
@@ -27,235 +24,215 @@ import com.games.tictactoe.service.storage.GamesStorage;
  */
 @Service
 public class GamesManager {
-	
-	private static final int MIN_FIELD_SIZE = 3;
-	private static final String TOO_SMALL_FIELD_MESSAGE = "Minimum field size is " + MIN_FIELD_SIZE;
-	private static final String NO_GAME_WITH_TOKEN_MESSAGE = "No game with token ";
-	private static final String GAME_TOKEN_PATTERN = "gameToken";
-	private static final String PLAYER_ACCESS_TOKEN_PATTERN = "accessToken";
-	private static final int GAME_ACTIVITY_MILLISECONDS = 5 * 60 * 1000; // 5 minutes
-	private static final int GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS = 100;
-	
-	/**
-	 * Games Factory
-	 */
-	@Autowired
-	private GamesFactory gamesFactory;
-	
-	@Autowired
-	@Qualifier("dbStorage")
-	private GamesStorage gamesStorage;
-	
-	/**
-	 * Players storage, key - accessToken, value - player
-	 */
-	private Map<String, Player> players = Collections.synchronizedMap(new HashMap<>());
 
-	/**
-	 * Games storage, key - gameToken, value - game
-	 */
-	private Map<String, Game> games = Collections.synchronizedMap(new HashMap<>());
-	
-	private boolean needCheckGamesLife = true;
-	private Thread checkGamesLifeThread;
-	
-	@PostConstruct
-	public void init() {
-		startCheckGamesActivity();
-	}
-	
-	@PreDestroy
-	public void cleanup() {
-		stopCheckGamesActivity();
-	}
+  private static final int MIN_FIELD_SIZE = 3;
+  private static final String TOO_SMALL_FIELD_MESSAGE = "Minimum field size is " + MIN_FIELD_SIZE;
+  private static final String NO_GAME_WITH_TOKEN_MESSAGE = "No game with token ";
+  private static final String NO_GAME_WITH_PLAYER_MESSAGE = "No game with player token ";
+  private static final String GAME_TOKEN_PATTERN = "gameToken";
+  private static final String PLAYER_ACCESS_TOKEN_PATTERN = "accessToken";
+  // TODO move to properties
+  private static final int GAME_NON_ACTIVITY_MILLISECONDS = 5 * 60 * 1000; // 5 minutes
+  private static final int GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS = 100;
 
-	/**
-	 * Clears all games and players
-	 */
-	public void clearAll() {
-		games.clear();
-		players.clear();
-	}
-	
-	/**
-	 * @param userName	game creator and owner name
-	 * @param size		field size
-	 * @return			new created game object
-	 * @throws NoGameException 
-	 */
-	public Game createNewGame(String userName, int size) throws NoGameException {
-		
-		if (size < MIN_FIELD_SIZE) {
-			throw new NoGameException(TOO_SMALL_FIELD_MESSAGE);
-		}
+  @Autowired
+  @Qualifier("dbStorage")
+  private GamesStorage gamesStorage;
 
-		String accessToken = generateNewAccessToken();
-		Player newPlayer = new Player(userName, accessToken);
-		players.put(accessToken, newPlayer);
-		
-		String gameToken = generateNewGameToken();
-		Game newGame = gamesFactory.createNewGame(gameToken, newPlayer, size);
-		games.put(gameToken, newGame);
-		
-		newPlayer.setGameToken(gameToken);
-		
-		gamesStorage.createPlayer(newPlayer);
+  /**
+   * Persons tokens map, key - person token, value - game token
+   */
+  private Map<String, String> personToGameTokens = new ConcurrentHashMap<>();
 
-		return newGame;
-	}
-	
-	/**
-	 * @return games list
-	 */
-	public List<Game> getGamesList() {
-		return new ArrayList<>(games.values());
-	}
-	
-	/**
-	 * @param gameToken	game token to join
-	 * @param userName	user name
-	 * @return			accessToken of joined user
-	 * @throws NoGameException 
-	 */
-	public String joinGame(String gameToken, String userName) throws NoGameException {
-		
-		Game game = games.get(gameToken);
-		if (game == null) {
-			throw new NoGameException(NO_GAME_WITH_TOKEN_MESSAGE + gameToken);	
-		}
-		
-		String accessToken = generateNewAccessToken();
-		Player newPlayer = new Player(userName, accessToken);
-		newPlayer.setGameToken(gameToken);
-		players.put(accessToken, newPlayer);
-		
-		if (game.getOpponent() == null) {
-			game.setOpponent(newPlayer);
-		} else { // add spectator
-			game.addSpectator(newPlayer);
-		}
-		
-		gamesStorage.createPlayer(newPlayer);
+  /**
+   * Games storage, key - game token, value - game
+   */
+  private Map<String, Game> games = new ConcurrentHashMap<>();
 
-		return accessToken;
-	}
-	
-	/**
-	 * @param row of step
-	 * @param col of step
-	 * @param accessToken of player wanted to do step
-	 * @return if step is successful
-	 */
-	public StepResult doStep(int row, int col, String accessToken) {
-		
-		Player player = players.get(accessToken);
-		if (player == null) {
-			return null; // maybe throw exception
-		}
-		
-		Game game = games.get(player.getGameToken());
-		if (game == null) {
-			return null; // maybe throw exception
-		}
+  private boolean needCheckGamesLife = true;
+  private Thread checkGamesLifeThread;
 
-		StepResult result = null;
-		try {
-			result = game.doStep(row, col, player);
-		} catch (IncorrectStepException e) {
-		}
+  @PostConstruct
+  public void init() {
+    startCheckGamesActivity();
+  }
 
-		if (game.getState() == State.Done) {
-			gamesStorage.saveGameResult(game);
-		}
+  @PreDestroy
+  public void cleanup() {
+    stopCheckGamesActivity();
+  }
 
-		return result;
-	}
-	
-	public GameState getGameState(String accessToken) {
+  /**
+   * Clears all games and players
+   */
+  public void clearAll() {
+    games.clear();
+  }
 
-		Player player = players.get(accessToken);
-		if (player == null) {
-			return null; // maybe throw exception
-		}
-		
-		Game game = games.get(player.getGameToken());
-		if (game == null) {
-			return null; // maybe throw exception
-		}
-		
-		GameState state = new GameState();
+  /**
+   * Creating new game.
+   * 
+   * @param userName
+   *          game creator and owner name
+   * @param size
+   *          field size
+   * @return new created game object
+   * @throws NoGameException
+   *           if field size too small
+   */
+  public Game createNewGame(String playerName, int size) throws NoGameException {
 
-		state.setGame(game);
-		state.setYouTurn(player.equals(game.getCurrentPlayer()));
-		
-		return state;
-	}
-	
-	public Game getGame(String accessToken) {
-		
-		Player player = players.get(accessToken);
-		if (player == null) {
-			return null; // maybe throw exception
-		}
-		
-		return games.get(player.getGameToken());
-	}
-	
-	private void startCheckGamesActivity() {
-		checkGamesLifeThread = new Thread() {
-			@Override
-			public void run() {
-				while (needCheckGamesLife) {
-					
-					// TODO discuss about performance if necessary
-					synchronized (games) {
-						for (Iterator<Game> iterator = games.values().iterator(); iterator.hasNext();) {
-							Game game = iterator.next();
-							if (game.getActivityTime() >= GAME_ACTIVITY_MILLISECONDS) {
-								players.remove(game.getOwner().getAccessToken());
-								if (game.getOpponent() != null) {
-									players.remove(game.getOpponent().getAccessToken());										
-								}
-								game.getSpectators().forEach(spec -> {
-									players.remove(spec.getAccessToken());
-								});
-								
-								iterator.remove();
-							}
-						}
-					}
-					
-					try {
-						Thread.sleep(GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		};
+    if (size < MIN_FIELD_SIZE) {
+      throw new NoGameException(TOO_SMALL_FIELD_MESSAGE);
+    }
 
-		checkGamesLifeThread.start();
-	}
+    String playerToken = generateNewPlayerAccessToken();
+    String gameToken = generateNewGameToken();
+    Game newGame = new Game(gameToken, size, playerToken, playerName);
 
-	private void stopCheckGamesActivity() {
-		needCheckGamesLife = false;
-		try {
-			checkGamesLifeThread.join();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
-//		System.out.println(games.size());
-//		System.out.println(players.size());
-//		System.out.println( "cleanup done" );
-	}
-	
-	private String generateNewAccessToken() {
-		return PLAYER_ACCESS_TOKEN_PATTERN + System.currentTimeMillis() + players.size();
-	}
+    personToGameTokens.put(playerToken, gameToken);
+    games.put(gameToken, newGame);
 
-	private String generateNewGameToken() {
-		return GAME_TOKEN_PATTERN + System.currentTimeMillis() + games.size();
-	}
+    synchronized (newGame) {
+      gamesStorage.createPlayer(newGame.getOwner());  
+    }
 
+    return newGame;
+  }
+
+  /**
+   * Joining existing game.
+   * 
+   * @param gameToken
+   *          game token to join
+   * @param userName
+   *          user name
+   * @return accessToken of joined user
+   * @throws NoGameException
+   *           if no existing game with such token
+   */
+  public String joinGame(String gameToken, String playerName) throws NoGameException {
+
+    Game game = games.get(gameToken);
+    if (game == null) {
+      throw new NoGameException(NO_GAME_WITH_TOKEN_MESSAGE + gameToken);
+    }
+    
+    String playerToken = generateNewPlayerAccessToken();
+    synchronized (game) {
+      if (game.getOpponent() == null) {
+        game.createOpponent(playerToken, playerName);
+      } else {
+        game.addSpectator(playerToken, playerName);
+      }
+      
+      personToGameTokens.put(playerToken, gameToken);
+      gamesStorage.createPlayer(game.getOpponent());
+    }
+
+    return playerToken;
+  }
+
+  /**
+   * Runs step for player with given token.
+   * 
+   * @param row
+   *          row of step
+   * @param col
+   *          column of step
+   * @param playerToken
+   *          token of player who do step
+   * @throws NoGameException
+   *          if no existing for this player
+   * @throws IncorrectStepException
+   *          if step is incorrect for any reason
+   */
+  public void doStep(int row, int col, String playerToken)
+      throws NoGameException, IncorrectStepException {
+
+    Game game = getGameByPlayerToken(playerToken);
+    synchronized (game) {
+      game.doStep(row, col, playerToken);
+
+      if (game.getState() == State.Finished) {
+        gamesStorage.saveGameResult(game);
+      }
+    }
+  }
+  
+  /**
+   * Getting all games list.
+   * 
+   * @return games list
+   */
+  public List<Game> getGamesList() {
+    return new ArrayList<>(games.values());
+  }
+
+  public Game.State getGameState(String playerToken) throws NoGameException {
+    
+    Game game = getGameByPlayerToken(playerToken);
+    return game.getState();
+  }
+
+  private void startCheckGamesActivity() {
+    checkGamesLifeThread = new Thread() {
+      @Override
+      public void run() {
+        while (needCheckGamesLife) {
+          
+          for (Iterator<Game> iterator = games.values().iterator(); iterator.hasNext();) {
+            Game game = iterator.next();
+            if (game.getActivityTime() >= GAME_NON_ACTIVITY_MILLISECONDS) {
+              List<String> gamePersonTokens = game.getGamePersonTokens();
+              gamePersonTokens.forEach(token -> {
+                personToGameTokens.remove(token);
+              });
+
+              iterator.remove();
+            }
+          }
+
+          try {
+            Thread.sleep(GAME_ACTIVITY_CHECK_PERIOD_MILLISECONDS);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    };
+
+    checkGamesLifeThread.start();
+  }
+
+  private void stopCheckGamesActivity() {
+    needCheckGamesLife = false;
+    try {
+      checkGamesLifeThread.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private String generateNewPlayerAccessToken() {
+    return PLAYER_ACCESS_TOKEN_PATTERN + System.currentTimeMillis() + personToGameTokens.size();
+  }
+
+  private String generateNewGameToken() {
+    return GAME_TOKEN_PATTERN + System.currentTimeMillis() + games.size();
+  }
+
+  public Game getGameByPlayerToken(String playerToken) throws NoGameException {
+    String gameToken = personToGameTokens.get(playerToken);
+    if (gameToken == null) {
+      throw new NoGameException(NO_GAME_WITH_PLAYER_MESSAGE + playerToken);
+    }
+
+    Game game = games.get(gameToken);
+    if (game == null) {
+      throw new NoGameException(NO_GAME_WITH_TOKEN_MESSAGE + gameToken);
+    }
+
+    return game;
+  }
 }

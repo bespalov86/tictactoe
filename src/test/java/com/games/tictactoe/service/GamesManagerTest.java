@@ -58,12 +58,12 @@ public class GamesManagerTest {
 
 		assertNotNull(gameToken);
 		assertNotNull(game.getOwner());
-		assertNotNull(game.getOwner().getAccessToken());
+		assertNotNull(game.getOwner().getToken());
 
 		String opponentAccessToken = manager.joinGame(gameToken, "opponentName");
 		assertNotNull(opponentAccessToken);
 		assertNotEquals(game.getOwner(), game.getOpponent());
-		assertNotEquals(game.getOwner().getAccessToken(), opponentAccessToken);
+		assertNotEquals(game.getOwner().getToken(), opponentAccessToken);
 	}
 
 	@Test(expected = NoGameException.class)
