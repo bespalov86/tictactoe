@@ -1,6 +1,7 @@
 ## Tictactoe server.
 ### This is server for games Tictactoe. Implemented for demonstration java-development.
 ### Used: Spring Boot, JDBC, MySQL, JUnit.
+#### Google Java Style is used for sources
 ### Build with Maven
 ### Web-service is RESTful
 
